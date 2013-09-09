@@ -8,6 +8,11 @@ import settings
 import stat
 #import thread
 import threading
+import struct
+import socket
+from multiprocessing import Pool
+import psycopg2
+#import multiprocessing, logging
 
 class creds:
     def __init__(self,username,password,domain):
@@ -39,48 +44,67 @@ def recurse_dir(db_obj,path,ctx):
             db_obj.append([path+'/'+item.name,'err'])
             pass
 # Where the magic happens
-def scan(server,db_obj):
-    server = '10.50.70.181'
+def scan(server):
+    db_obj = []
     ctx = smbc.Context()
     ctx.optionNoAutoAnonymousLogin = True
     # You want to do it this way otherwise things get out of order???
     cb = lambda se, sh, w, u, p: (settings.DOMAIN, settings.USERNAME, settings.PASSWORD)
     ctx.functionAuthData = cb
     entries = ctx.opendir('smb://'+server).getdents()
-    #db_obj = []
-    #threads = []
-    #thread_array = []
-    #thread_lock = 1
+
+    #pool = Pool()
+    #results = pool.map_async(recurse_dir,path)
+
     for entry in entries:
-        #print entry
+        print entry
         # 3L type is a share
         if entry.smbc_type == 3L and "$" not in entry.name:
              share = entry.name
              path = 'smb://'+server+'/'+share+'/'
              try:
                  recurse_dir(db_obj,path,ctx)
-                 #t = threading.Thread(target=recurse_dir,args=(db_obj,path,ctx))
-                 #t.daemon = True
-                 #t.start()
-                 #thread_array.append(t)
-                 #thread_lock-=1
-                 #print str(len(thread_array))
-                 #if thread_lock == 0:
-                 #    thread_array[0].join()
-                 #    thread_lock+=1
-                 #    thread_array.pop(0)
-
              except:
                  print "Access Denied or something broke"
                  pass
     return db_obj    
 
+def ip_expand(target):
+    network = target.split('/')[0]
+    hosts = target.split('/')[1]
+    result = []
+    for i in xrange((2**32-int(hosts))):
+        result.append(socket.inet_ntoa(struct.pack('!I',struct.unpack('!I', socket.inet_aton(network))[0]+i)))
+    return result
+        
+# Borrowed the below function from noodle-ng https://code.google.com/p/noodle-ng/  
+def checkSMB(ip):
+    """ looks for running samba server """
+    # check if the server is running a smb server
+    sd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # This may need to get changed on high-latency links...
+    sd.settimeout(1)
+    try:
+        sd.connect((ip, 445))
+        sd.close()
+        return True
+    except:
+        return False
+
+def save(db_obj):
+    output_file = open(settings.OUTPUT_FILE,'a+')
+    for obj in db_obj:
+        path = obj[0]
+        attr = obj[1]
+        output_file.write(path+':'+str(attr)+'\n')
+
+        
 
 if __name__ == "__main__":
     # TODO: allow this to be set from a configuration file or on cmdline
 
-    if settings.SERVER is not None and settings.TARGET_LIST is not None:
-        print "Please either scan a single server or a list of servers.  Modify settings.py"
+    #if settings.SERVER is not None and settings.TARGET_LIST is not None:
+    #    print "Please either scan a single server or a list of servers.  Modify settings.py"
     
     if len(sys.argv)>1:
         print "Python Share Scanner v1 -- Bryan 'Crypt0s' Halfpap"
@@ -92,36 +116,24 @@ if __name__ == "__main__":
     db_obj = []
     # Will the db_obj as a list need a mutex for access?  Who knows...
 
-    if settings.SERVER is not None:
-        server = settings.SERVER
-        scan(server,db_obj)
-
     if settings.TARGET_LIST is not None:
         with open(settings.TARGET_LIST,'r') as target_list:
             targets = target_list.readlines()
 
-        # A fairly rudimentary thread limiter -- libsmb easily screws itself with threads though....ymmv
-        #thread_lock = settings.MAX_THREADS
-        #thread_array = []
-        for target in targets:
-            scan(target,db_obj)
-            #t = threading.Thread(target=scan,args=(target,db_obj))
-            #t.daemon = True
-            #t.start()
-            #thread_array.append(t)
-            #thread_lock-=1
-            #print str(len(thread_array))
-            #if thread_lock == 0:
-            #    thread_array[0].join()
-            #    thread_lock+=1
-            #    thread_array.pop(0)
+            # Handles any network ranges in the target list.
+            expanded_range = []
+            for target in targets:
+                if '/' in target:
+                    expanded_range = expanded_range + ip_expand(target)
+            targets = targets + expanded_range
 
-        # now we take all the data and push it into that file.
-        #check to see if the file exists.
-        output_file = open(settings.OUTPUT_FILE,'a+')
-        for entry in db_obj:
-            path = entry[0]
-            attrs = entry[1]
-            output_file.write(attrs+" : "+path)
-        pdb.set_trace()
-        
+            # remove targets from the target list that aren't running the SMB server process.
+            for x in xrange(len(targets)):
+                if checkSMB(targets[x]) is False:
+                    targets.pop(x)
+                #scan(targets[x])
+            pool = Pool()
+            results = pool.map_async(scan,targets)
+            pdb.set_trace()
+            results.get()
+
