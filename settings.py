@@ -1,4 +1,4 @@
-# Database credentials
+# Database credentials -- Unused
 DB_USER = ""
 DB_PASS = ""
 DB_DBASE= ""
