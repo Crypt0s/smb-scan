@@ -1,9 +1,13 @@
+# Database credentials
+DB_USER = ""
+DB_PASS = ""
+DB_DBASE= ""
+
+# Domain credentials for scanning
 USERNAME = ''
 PASSWORD = ''
 DOMAIN = ""
 
-# Only one of these should be enabled.  Either scan a specific server or a list of them
-SERVER = None
 TARGET_LIST = "targets.txt"
 
 # This will output an "ls"-style output for easy grepping/awking
