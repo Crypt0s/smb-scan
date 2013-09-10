@@ -8,5 +8,5 @@ TARGET_LIST = "targets.txt"
 # This will output an "ls"-style output for easy grepping/awking
 OUTPUT_FILE = "output.txt"
 
-# Unused -- yet
+# Limit the number of connections -- we make one SMB scanner thread per system in the targets file
 MAX_THREADS = 10
