@@ -73,7 +73,7 @@ def ip_expand(target):
     network = target.split('/')[0]
     hosts = target.split('/')[1]
     result = []
-    for i in xrange((2**32-int(hosts))):
+    for i in xrange((2**(32-int(hosts)))):
         result.append(socket.inet_ntoa(struct.pack('!I',struct.unpack('!I', socket.inet_aton(network))[0]+i)))
     return result
         
@@ -142,6 +142,7 @@ if __name__ == "__main__":
             targets[i] = targets[i].strip()
             if '/' in targets[i]:
                 expanded_range = expanded_range + ip_expand(targets[i])
+                targets.pop(i)
         targets = targets + expanded_range
 
         # remove targets from the target list that aren't running the SMB server process.
