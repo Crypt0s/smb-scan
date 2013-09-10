@@ -108,7 +108,6 @@ def checkSMB(ip):
 #                attr = obj[1]
 #                output_file.write(path+':'+str(attr)+'\n')
 def save(res_obj):
-    pdb.set_trace()
     for obj in res_obj[0]:
         path = obj[0]
         chmod = obj[1]
@@ -141,7 +140,6 @@ if __name__ == "__main__":
         expanded_range = []
         for i in xrange(len(targets)):
             targets[i] = targets[i].strip()
-            pdb.set_trace()
             if '/' in targets[i]:
                 expanded_range = expanded_range + ip_expand(targets[i])
         targets = targets + expanded_range
@@ -154,6 +152,8 @@ if __name__ == "__main__":
     #database_stub = db_connection(settings.DB_ENABLE)
     pool = Pool()
     fp = open(settings.OUTPUT_FILE,'a+')
+    print "Starting to scan the ranges...this will take a while."
     results = pool.map_async(scan,targets,None,save)
     results.get()
+    print "Finished scanning"
     fp.close()
