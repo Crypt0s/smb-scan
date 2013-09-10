@@ -150,9 +150,9 @@ if __name__ == "__main__":
                 targets.pop(x)
             #scan(targets[x])
     #database_stub = db_connection(settings.DB_ENABLE)
-    pool = Pool()
-    fp = open(settings.OUTPUT_FILE,'a+')
     print "Starting to scan the ranges...this will take a while."
+    pool = Pool(settings.MAX_THREADS)
+    fp = open(settings.OUTPUT_FILE,'a+')
     results = pool.map_async(scan,targets,None,save)
     results.get()
     print "Finished scanning"
