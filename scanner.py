@@ -7,11 +7,12 @@ import pdb
 import settings
 import stat
 #import thread
-import threading
+#import threading
 import struct
 import socket
 from multiprocessing import Pool
 import psycopg2
+
 #import multiprocessing, logging
 
 class creds:
@@ -43,6 +44,7 @@ def recurse_dir(db_obj,path,ctx):
         except:
             db_obj.append([path+'/'+item.name,'err'])
             pass
+
 # Where the magic happens
 def scan(server):
     db_obj = []
@@ -53,9 +55,6 @@ def scan(server):
     ctx.functionAuthData = cb
     entries = ctx.opendir('smb://'+server).getdents()
 
-    #pool = Pool()
-    #results = pool.map_async(recurse_dir,path)
-
     for entry in entries:
         print entry
         # 3L type is a share
@@ -63,6 +62,7 @@ def scan(server):
              share = entry.name
              path = 'smb://'+server+'/'+share+'/'
              try:
+                 #thread.start_new_thread(recurse_dir,(db_obj,path,ctx))
                  recurse_dir(db_obj,path,ctx)
              except:
                  print "Access Denied or something broke"
@@ -91,14 +91,28 @@ def checkSMB(ip):
     except:
         return False
 
-def save(db_obj):
-    output_file = open(settings.OUTPUT_FILE,'a+')
-    for obj in db_obj:
+#class db_connection:
+#    def __init__(self,db_enable):
+#        self.db_enable = db_enable
+#        if self.db_enable:
+#            self.connection = psycopg2.connect(host=settings.DB_SRV dbname=settings.DB_DBASE user=settings.DB_USER password=settings.DB_PASS)
+#
+#    def save(db_obj):
+#        if self.db_enable:
+#            cursor = conn.cursor()
+#            cursor.execute("INSERT INTO results 
+#        else:
+#            output_file = open(settings.OUTPUT_FILE,'a+')
+#            for obj in db_obj:
+#                path = obj[0]
+#                attr = obj[1]
+#                output_file.write(path+':'+str(attr)+'\n')
+def save(res_obj):
+    pdb.set_trace()
+    for obj in res_obj[0]:
         path = obj[0]
-        attr = obj[1]
-        output_file.write(path+':'+str(attr)+'\n')
-
-        
+        chmod = obj[1]
+        fp.write(str(chmod) + "\t" + path + '\n')
 
 if __name__ == "__main__":
     # TODO: allow this to be set from a configuration file or on cmdline
@@ -116,24 +130,30 @@ if __name__ == "__main__":
     db_obj = []
     # Will the db_obj as a list need a mutex for access?  Who knows...
 
-    if settings.TARGET_LIST is not None:
-        with open(settings.TARGET_LIST,'r') as target_list:
-            targets = target_list.readlines()
-
-            # Handles any network ranges in the target list.
-            expanded_range = []
-            for target in targets:
-                if '/' in target:
-                    expanded_range = expanded_range + ip_expand(target)
-            targets = targets + expanded_range
-
-            # remove targets from the target list that aren't running the SMB server process.
-            for x in xrange(len(targets)):
-                if checkSMB(targets[x]) is False:
-                    targets.pop(x)
-                #scan(targets[x])
-            pool = Pool()
-            results = pool.map_async(scan,targets)
+    if settings.TARGET_LIST is None:
+        print "You don't have a target list specified"
+        exit()
+    with open(settings.TARGET_LIST,'r') as target_list:
+        targets = target_list.readlines()
+        if len(targets)>1:
+            print "You did not specify anything to scan in your target file."
+        # Handles any network ranges in the target list.
+        expanded_range = []
+        for i in xrange(len(targets)):
+            targets[i] = targets[i].strip()
             pdb.set_trace()
-            results.get()
+            if '/' in targets[i]:
+                expanded_range = expanded_range + ip_expand(targets[i])
+        targets = targets + expanded_range
 
+        # remove targets from the target list that aren't running the SMB server process.
+        for x in xrange(len(targets)):
+            if checkSMB(targets[x]) is False:
+                targets.pop(x)
+            #scan(targets[x])
+    #database_stub = db_connection(settings.DB_ENABLE)
+    pool = Pool()
+    fp = open(settings.OUTPUT_FILE,'a+')
+    results = pool.map_async(scan,targets,None,save)
+    results.get()
+    fp.close()
