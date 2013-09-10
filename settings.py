@@ -1,8 +1,3 @@
-# Database credentials -- Unused
-DB_USER = ""
-DB_PASS = ""
-DB_DBASE= ""
-
 # Domain credentials for scanning
 USERNAME = ''
 PASSWORD = ''
