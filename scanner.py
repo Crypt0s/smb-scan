@@ -36,9 +36,10 @@ def recurse_dir(db_obj,path,ctx):
                 recurse_dir(db_obj,path+'/'+item.name,ctx)
             else:
                 st = ctx.stat(path+'/'+item.name)
+                #print item.name
                 mode = st[stat.ST_MODE]
                 # Convert things into unix file perm representation
-                attr = stat.S_IMODE(mode)
+                attr = oct(stat.S_IMODE(mode))
                 # put it into the object holding a list of all the files.
                 db_obj.append([path+'/'+item.name,attr])
         except:
@@ -53,20 +54,21 @@ def scan(server):
     # You want to do it this way otherwise things get out of order???
     cb = lambda se, sh, w, u, p: (settings.DOMAIN, settings.USERNAME, settings.PASSWORD)
     ctx.functionAuthData = cb
-    entries = ctx.opendir('smb://'+server).getdents()
-
-    for entry in entries:
-        print entry
-        # 3L type is a share
-        if entry.smbc_type == 3L and "$" not in entry.name:
-             share = entry.name
-             path = 'smb://'+server+'/'+share+'/'
-             try:
-                 #thread.start_new_thread(recurse_dir,(db_obj,path,ctx))
-                 recurse_dir(db_obj,path,ctx)
-             except:
-                 print "Access Denied or something broke"
-                 pass
+    try:
+        entries = ctx.opendir('smb://'+server).getdents()
+        for entry in entries:
+            print entry
+            # 3L type is a share
+            if entry.smbc_type == 3L and "$" not in entry.name:
+                 share = entry.name
+                 path = 'smb://'+server+'/'+share+'/'
+                 try:
+                     recurse_dir(db_obj,path,ctx)
+                 except:
+                     print "Access Denied or something broke"
+                     pass
+    except:
+        pass
     return db_obj    
 
 def ip_expand(target):
@@ -87,38 +89,22 @@ def checkSMB(ip):
     try:
         sd.connect((ip, 445))
         sd.close()
-        return True
+        print("."),
+        return ip
     except:
-        return False
+        print("-"),
 
-#class db_connection:
-#    def __init__(self,db_enable):
-#        self.db_enable = db_enable
-#        if self.db_enable:
-#            self.connection = psycopg2.connect(host=settings.DB_SRV dbname=settings.DB_DBASE user=settings.DB_USER password=settings.DB_PASS)
-#
-#    def save(db_obj):
-#        if self.db_enable:
-#            cursor = conn.cursor()
-#            cursor.execute("INSERT INTO results 
-#        else:
-#            output_file = open(settings.OUTPUT_FILE,'a+')
-#            for obj in db_obj:
-#                path = obj[0]
-#                attr = obj[1]
-#                output_file.write(path+':'+str(attr)+'\n')
 def save(res_obj):
+    #pdb.set_trace()
+    print "SAVE"
+    fp=open(settings.OUTPUT_FILE,'a+')
     for obj in res_obj[0]:
         path = obj[0]
         chmod = obj[1]
         fp.write(str(chmod) + "\t" + path + '\n')
+    fp.close()    
 
 if __name__ == "__main__":
-    # TODO: allow this to be set from a configuration file or on cmdline
-
-    #if settings.SERVER is not None and settings.TARGET_LIST is not None:
-    #    print "Please either scan a single server or a list of servers.  Modify settings.py"
-    
     if len(sys.argv)>1:
         print "Python Share Scanner v1 -- Bryan 'Crypt0s' Halfpap"
         print "Usage:"
@@ -136,25 +122,32 @@ if __name__ == "__main__":
         targets = target_list.readlines()
         if len(targets)>1:
             print "You did not specify anything to scan in your target file."
-        # Handles any network ranges in the target list.
-        expanded_range = []
-        for i in xrange(len(targets)):
-            targets[i] = targets[i].strip()
-            if '/' in targets[i]:
-                expanded_range = expanded_range + ip_expand(targets[i])
-                targets.pop(i)
-        targets = targets + expanded_range
+    # Handles any network ranges in the target list.
+    expanded_range = []
+    for i in xrange(len(targets)):
+        targets[i] = targets[i].strip()
+        if '/' in targets[i]:
+            expanded_range = expanded_range + ip_expand(targets[i])
+            targets.pop(i)
+    targets = targets + expanded_range
+    print "Checking for SMB servers on target hosts"
+    # remove targets from the target list that aren't running the SMB server process.
+    pool = Pool(50)
+    valid_targets = pool.map(checkSMB,targets)
 
-        # remove targets from the target list that aren't running the SMB server process.
-        for x in xrange(len(targets)):
-            if checkSMB(targets[x]) is False:
-                targets.pop(x)
-            #scan(targets[x])
-    #database_stub = db_connection(settings.DB_ENABLE)
-    print "Starting to scan the ranges...this will take a while."
-    pool = Pool(settings.MAX_THREADS)
+    valid_targets[:] = (x for x in valid_targets if x is not None)
+
+    print str(len(valid_targets))+" Valid targets found."
+    del targets
+
+    print "Starting to crawl the targets...this will take a while."
+    npool = Pool(settings.MAX_THREADS)
     fp = open(settings.OUTPUT_FILE,'a+')
-    results = pool.map_async(scan,targets,None,save)
+    results = npool.map_async(scan,valid_targets,None,save)
+    #results = npool.map_async(scan,valid_targets)
+    #for target in valid_targets:
+    #    save(scan(target))
     results.get()
+    
     print "Finished scanning"
     fp.close()
