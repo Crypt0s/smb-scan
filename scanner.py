@@ -98,10 +98,11 @@ def save(res_obj):
     #pdb.set_trace()
     print "SAVE"
     fp=open(settings.OUTPUT_FILE,'a+')
-    for obj in res_obj[0]:
-        path = obj[0]
-        chmod = obj[1]
-        fp.write(str(chmod) + "\t" + path + '\n')
+    for obj in res_obj:
+        for subobj in obj:
+            path = subobj[0]
+            chmod = subobj[1]
+            fp.write(str(chmod) + "\t" + path + '\n')
     fp.close()    
 
 if __name__ == "__main__":
@@ -112,7 +113,7 @@ if __name__ == "__main__":
         print "All settings and documentation for settings are found in settings.py"
 
     # I'm using a giant list right now but obviously there's room for improvement by using something like ZODB or Postgres.
-    db_obj = []
+    #db_obj = []
     # Will the db_obj as a list need a mutex for access?  Who knows...
 
     if settings.TARGET_LIST is None:
@@ -143,11 +144,11 @@ if __name__ == "__main__":
     print "Starting to crawl the targets...this will take a while."
     npool = Pool(settings.MAX_THREADS)
     fp = open(settings.OUTPUT_FILE,'a+')
-    results = npool.map_async(scan,valid_targets,None,save)
+    results = npool.map_async(scan,valid_targets)
     #results = npool.map_async(scan,valid_targets)
     #for target in valid_targets:
     #    save(scan(target))
-    results.get()
-    
+    save(results.get())
+    pdb.set_trace()    
     print "Finished scanning"
     fp.close()
