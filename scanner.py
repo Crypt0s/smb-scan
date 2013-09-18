@@ -1,16 +1,16 @@
 #!/usr/bin/python
 
+import itertools
 import smbc
 import sys
 import os
 import pdb
 import settings
 import stat
-#import thread
-#import threading
 import struct
 import socket
 from multiprocessing import Pool
+from multiprocessing import Value,Lock,Manager
 import psycopg2
 
 #import multiprocessing, logging
@@ -21,9 +21,7 @@ class creds:
         self.username = username
         self.password = password
     def auth_fn(self, server, share, workgroup, username, password):
-        #return (self.domain,self.username,self.password)
         return (self.username,self.domain,self.password)
-        #return (self.password,self.domain,self.username)
 
 def recurse_dir(db_obj,path,ctx):
     dirs = ctx.opendir(path).getdents()
@@ -69,7 +67,20 @@ def scan(server):
                      pass
     except:
         pass
-    return db_obj    
+
+    #Poor man's semaphore
+    while lock == 1:
+        continue
+    lock.value = 1
+    print "SAVE"
+    fp=open(settings.OUTPUT_FILE,'a+')
+    for obj in db_obj:
+        path = obj[0]
+        chmod = obj[1]
+        fp.write(str(chmod) + "\t" + path + '\n')
+    fp.close()    
+    lock.value = 0
+    return True
 
 def ip_expand(target):
     network = target.split('/')[0]
@@ -142,13 +153,16 @@ if __name__ == "__main__":
     del targets
 
     print "Starting to crawl the targets...this will take a while."
+
+    lock = Value('i',0,lock=True)
     npool = Pool(settings.MAX_THREADS)
-    fp = open(settings.OUTPUT_FILE,'a+')
     results = npool.map_async(scan,valid_targets)
-    #results = npool.map_async(scan,valid_targets)
+    #results = npool.map_async(scan,map(lambda a,b:[a,b],itertools.repeat(lock,len(valid_targets)),valid_targets))
     #for target in valid_targets:
     #    save(scan(target))
-    save(results.get())
-    pdb.set_trace()    
+    #fp = open(settings.OUTPUT_FILE,'a+')
+    #save(results.get())
+    #pdb.set_trace()    
+    #fp.close()
+    results.get()
     print "Finished scanning"
-    fp.close()
