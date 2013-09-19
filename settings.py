@@ -1,5 +1,6 @@
-#Turning this on will attempt to connect to the server anonymously without using the domain credentials
-ANONYMOUS = True
+# Turning this on will attempt to connect to the server anonymously without using the domain credentials
+# May not be working.  Not fully tested.
+ANONYMOUS = False
 
 # Domain credentials for scanning
 USERNAME = ''
