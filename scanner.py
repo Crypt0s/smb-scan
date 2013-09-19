@@ -159,11 +159,10 @@ if __name__ == "__main__":
     lock = Value('i',0,lock=True)
     
     # Scanner pool - creates one scan thread for each host -- this can get slow if you have very few file shares with lots of files.
-    #npool = Pool(settings.MAX_THREADS)
-    #results = npool.map_async(scan,valid_targets)
-    #results.get()
+    npool = Pool(settings.MAX_THREADS)
+    results = npool.map_async(scan,valid_targets)
+    results.get()
     print "Finished scanning"
-    import pdb
-    pdb.set_trace()
-    scan('10.50.70.181')
+    #import pdb
+    #pdb.set_trace()
 
