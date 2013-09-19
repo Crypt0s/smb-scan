@@ -41,7 +41,6 @@ def recurse_dir(db_obj,path,ctx):
 
 # Where the magic happens
 def scan(server):
-    pdb.set_trace()
     db_obj = []
     ctx = smbc.Context()
 
