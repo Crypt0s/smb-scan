@@ -4,16 +4,12 @@ import itertools
 import smbc
 import sys
 import os
-import pdb
 import settings
 import stat
 import struct
 import socket
 from multiprocessing import Pool
 from multiprocessing import Value,Lock,Manager
-import psycopg2
-
-#import multiprocessing, logging
 
 class creds:
     def __init__(self,username,password,domain):
@@ -34,7 +30,6 @@ def recurse_dir(db_obj,path,ctx):
                 recurse_dir(db_obj,path+'/'+item.name,ctx)
             else:
                 st = ctx.stat(path+'/'+item.name)
-                #print item.name
                 mode = st[stat.ST_MODE]
                 # Convert things into unix file perm representation
                 attr = oct(stat.S_IMODE(mode))
@@ -123,10 +118,7 @@ if __name__ == "__main__":
         print "./scanner.py"
         print "All settings and documentation for settings are found in settings.py"
 
-    # I'm using a giant list right now but obviously there's room for improvement by using something like ZODB or Postgres.
-    #db_obj = []
-    # Will the db_obj as a list need a mutex for access?  Who knows...
-
+    # Settings housekeeping
     if settings.TARGET_LIST is None:
         print "You don't have a target list specified"
         exit()
@@ -134,6 +126,9 @@ if __name__ == "__main__":
         targets = target_list.readlines()
         if len(targets)>1:
             print "You did not specify anything to scan in your target file."
+
+
+
     # Handles any network ranges in the target list.
     expanded_range = []
     for i in xrange(len(targets)):
@@ -147,22 +142,18 @@ if __name__ == "__main__":
     pool = Pool(50)
     valid_targets = pool.map(checkSMB,targets)
 
+    # This is a neat tidbit for editing a list in-place
     valid_targets[:] = (x for x in valid_targets if x is not None)
 
     print str(len(valid_targets))+" Valid targets found."
     del targets
 
     print "Starting to crawl the targets...this will take a while."
-
+    # Cheap semaphore
     lock = Value('i',0,lock=True)
+    
+    # Scanner pool - creates one scan thread for each host -- this can get slow if you have very few file shares with lots of files.
     npool = Pool(settings.MAX_THREADS)
     results = npool.map_async(scan,valid_targets)
-    #results = npool.map_async(scan,map(lambda a,b:[a,b],itertools.repeat(lock,len(valid_targets)),valid_targets))
-    #for target in valid_targets:
-    #    save(scan(target))
-    #fp = open(settings.OUTPUT_FILE,'a+')
-    #save(results.get())
-    #pdb.set_trace()    
-    #fp.close()
     results.get()
     print "Finished scanning"
