@@ -41,12 +41,18 @@ def recurse_dir(db_obj,path,ctx):
 
 # Where the magic happens
 def scan(server):
+    pdb.set_trace()
     db_obj = []
     ctx = smbc.Context()
-    ctx.optionNoAutoAnonymousLogin = True
-    # You want to do it this way otherwise things get out of order???
-    cb = lambda se, sh, w, u, p: (settings.DOMAIN, settings.USERNAME, settings.PASSWORD)
-    ctx.functionAuthData = cb
+
+    if settings.ANONYMOUS == True:
+        ctx.optionNoAutoAnonymousLogin = False
+    else:
+        ctx.optionNoAutoAnonymousLogin = True        
+        # You want to do it this way otherwise things get out of order???
+        cb = lambda se, sh, w, u, p: (settings.DOMAIN, settings.USERNAME, settings.PASSWORD)
+        ctx.functionAuthData = cb
+
     try:
         entries = ctx.opendir('smb://'+server).getdents()
         for entry in entries:
@@ -153,7 +159,11 @@ if __name__ == "__main__":
     lock = Value('i',0,lock=True)
     
     # Scanner pool - creates one scan thread for each host -- this can get slow if you have very few file shares with lots of files.
-    npool = Pool(settings.MAX_THREADS)
-    results = npool.map_async(scan,valid_targets)
-    results.get()
+    #npool = Pool(settings.MAX_THREADS)
+    #results = npool.map_async(scan,valid_targets)
+    #results.get()
     print "Finished scanning"
+    import pdb
+    pdb.set_trace()
+    scan('10.50.70.181')
+
