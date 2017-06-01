@@ -52,7 +52,7 @@ def scan(server):
        ctx.optionNoAutoAnonymousLogin == True
 # there is a required order for Anonymous Authentication
        cb = lambda se, sh, w, u, p: (smbargs.domain, smbargs.uname, smbargs.passwd)
-       ctx.functionAuthData = db
+       ctx.functionAuthData = cb
 
     try:
       entries = ctx.opendir('smb://' + server).getdents()
@@ -75,7 +75,7 @@ def scan(server):
         continue
     lock.value = 1
     print "Found stuff"
-    fp = open(smbargs.resultsfile, 'a+')
+    fp = open(smbargs.results_file, 'a+')
     for obj in db_obj:
         path = obj[0]
         chmod = obj[1]
@@ -95,7 +95,7 @@ def ip_expand(target):
 # noodle-ng was helpful in figuring this out
 def checkSMB(ip):
     """ looks for SMB communications """
-    sd = socket.socket(socker.AF_INET, socket.SOCK_STREAM)
+    sd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sd.settimeout(1)
     try:
         sd.connect((ip, 445))
@@ -107,48 +107,50 @@ def checkSMB(ip):
 
 def save(res_obj):
     print "Look at this stuff"
-    fp=open(smbargs.resultsfile, 'a+')
+    fp=open(smbargs.results_file, 'a+')
     for obj in red_obj:
         for subobj in obj:
             path = subobj[0]
-            chmod = subojb[1]
+            chmod = subobj[1]
             fp.write(str(chmod) + ':\s' + path + '\n')
     fp.close()
 
 if __name__ == "__main__":
     smbparser = argparse.ArgumentParser(description="SMB Checker")
-    smbparser.add_argument("--target_file", default=None, help="Target file")
-    smbparser.add_argument("--results_file", default=None, help="Results file")
-    smbparser.add_argument("--domain", default=None, help="domain for authentication")
-    smbparser.add_argument("--uname", default=None, help="Username for authentication")
-    smbparser.add_argument("--passwd", default=None, help="Password for authentication")
-    smbparser.add_argument("--anonymous", default=None, help="Test for anonymous")
-    smbparser.add_argument("--ip_range", default=None, help="CIDR block, use /32 for individuals")
-    smbparser.add_argument("--packet_rate", default=50, help="Number to test at once")
+    smbparser.add_argument("-target_file", type=str, help="Target file")
+    smbparser.add_argument("-results_file", type=str, help="Results file")
+    smbparser.add_argument("-domain", type=str, help="domain for authentication")
+    smbparser.add_argument("-uname", type=str, help="Username for authentication")
+    smbparser.add_argument("-passwd", type=str, help="Password for authentication")
+    smbparser.add_argument("-anonymous", type=str, help="Test for anonymous")
+#    smbparser.add_argument("--ip_range", type=str, help="CIDR block, use /32 for individuals")
+    smbparser.add_argument("-packet_rate", default=50, type=int, help="Number to test at once")
 
     smbargs = smbparser.parse_args()
+   
+    print smbargs.target_file
 
-    with open(smbargs.target_file,'r') as target_file:
-        targets = target_file.readlines()
+    with open(smbargs.target_file, mode='r', buffering=1) as targets_file:
+        targets = targets_file.readlines()
         if len(targets)>1:
-            print "Something is wrong with the target file."
+           print "Something is wrong with the target file."
 
-# Hnndling CIDRS
-    expand_range = []
-    for i in xrange(len(targets)):
-        targets[i] = targets[i].strip()
-        if '/' in targets[i]:
-           expand_range = expand_range + ip_expand(targets[i])
-           targets.pop(i)
-    targets = targets + expand_range
-    print "Checking for SMB communication protocols"
+# Handling CIDRS
+           expand_range = []
+           for i in xrange(len(targets)):
+              targets[i] = targets[i].strip()
+              if '/' in targets[i]:
+                 expand_range = expand_range + ip_expand(targets[i])
+                 targets.pop(i)
+                 targets = targets + expand_range
+                 print "Checking for SMB communication protocols"
 # remove target from the target list that aren't running the SMB protocol
     pool = Pool(smbargs.packet_rate)
     valid_targets = pool.map(checkSMB,targets)
 
 # This hopefully will edit a list in-place
     valid_targets[:] = (x for x in valid_targets if x is not None)
-
+    print valid_targets
     print str(len(valid_targets))+" Valid targets found."
     del targets
 
@@ -157,7 +159,7 @@ if __name__ == "__main__":
 
 # dynamic scanning pool, so we'll take care of this here
 
-    npool = Pool(smbarg.packet_rate)
-    results = npool.map_async(scan,valid_target)
+    npool = Pool(smbargs.packet_rate)
+    results = npool.map_async(scan,valid_targets)
     results.get()
     print "Done"
