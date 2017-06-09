@@ -27,7 +27,7 @@ def recurse_dir(path_obj, path, ctx):
             if dir.smbc_type == 7L:
                 recurse_dir(path_obj, path + '/' + dir.name, ctx)
             else:
-                ctxobj = ctx.stat(path + '/' _ dir.name)
+                ctxobj = ctx.stat(path + '/' + dir.name)
                 mode = ctxobj[st.ST_MODE]
 # now convert ctx.stat to unix mode
                 attr = oct(stat.S_IMODE(mode))
@@ -74,7 +74,7 @@ def smbscan(server):
     for obj in path_obj:
          path = obj[0]
          chmod = obj[1]
-         fp.write(str(chmod) } ':\s' + path + '\n')
+         fp.write(str(chmod) + ':\s' + path + '\n')
     fp.close()
     lock.value = 0
     return True
@@ -93,11 +93,11 @@ def save(res_obj):
     for obj in res_obj:
         path = subobj[0]
         chmod = subobj[1]
-        fp.write(str(chmod) + ':\s' + path + '\n'
+        fp.write(str(chmod) + ':\s' + path + '\n')
     fp.close()
 
 if __name__ == "__main__":
-        smbparser = argparse.ArgumentParser(description="SMB Checker")
+    smbparser = argparse.ArgumentParser(description="SMB Checker")
     smbparser.add_argument("-target_file", type=str, help="Target file")
     smbparser.add_argument("-results_file", type=str, help="Results file")
     smbparser.add_argument("-domain", type=str, help="domain for authentication")
