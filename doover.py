@@ -127,7 +127,7 @@ if __name__ == "__main__":
                  print "Checking for SMB communication protocols"
 # remove target from the target list that aren't running the SMB protocol
     pool = Pool(smbargs.packet_rate)
-    valid_targets = pool.map(checkSMB, targets)
+    valid_targets = pool.map(PortScan, targets)
 
 # This hopefully will edit a list in-place
     valid_targets[:] = (x for x in valid_targets if x is not None)
@@ -141,6 +141,6 @@ if __name__ == "__main__":
 # dynamic scanning pool, so we'll take care of this here
 
     npool = Pool(smbargs.packet_rate)
-    results = npool.map_async(scan,valid_targets)
+    results = npool.map_async(PortScan,valid_targets)
     results.get()
     print "Done"
