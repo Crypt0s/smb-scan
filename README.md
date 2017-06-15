@@ -20,21 +20,29 @@ My Samba docker container is off in this example:
 
 - 192.168.10.5
 - Port 445 Closed
+
 ['192.168.10.5\n']
+
 Starting to crawl the targets... this will take some time.
+
 Done
 
 This is the output with my docker container turned on:
 
 - 192.168.10.5
 - Port 445 Closed
+
 ['192.168.10.5\n']
+
 Starting to crawl the targets... this will take some time.
+
 <smbc.Dirent object "(null)" (?) at 0x7fabf7ff1be8>
+
 <smbc.Dirent object "(null)" (?) at 0x7fabf7da9788>
+
 Done
 
-Dependancies:
+Dependencies:
 =============
 
 https://pypi.python.org/pypi/pysmbc/
